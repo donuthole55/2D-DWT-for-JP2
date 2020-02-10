@@ -10,59 +10,101 @@
 
 //double *tempbank=0;
 
-#define ROWS 128
-#define COLS 128
-
-double x [128][128];
-double tempbank [128];
+#define ROWS 64
+#define COLS 64
 
 
-void coldwt(int n){ //n is the current col number
+
+
+void coldwt(Ptr<Float> im, Ptr<Float> tempbank){ //n is the current col number
   double a;
   int i;
 
+  Int inc = numQPUs() << 4;
+  Ptr<Float> row = im + index() + (me() << 4);
+  Ptr<Float> tempRow = tempbank + index() + (me() << 4);
   // Predict 1
   a=-1.586134342;
-  for (i=1;i<ROWS-2;i+=2) {
-    x[i][n]+=a*(x[i-1][n]+x[i+1][n]);
+  Float i0, i1, i2;
+  for (i=1;i<ROWS-2;i+=2){
+    gather(row+(i-1)*inc);
+    gather(row+(i+0)*inc);
+    gather(row+(i+1)*inc);
+    receive(i0);receive(i1);receive(i2);
+    store(i1+a*(i0+i2),row+(i+0)*inc);
   }
-  x[ROWS-1][n]+=2*a*x[ROWS-2][n];
+  gather(row+(ROWS-1)*inc);
+  gather(row+(ROWS-2)*inc);
+  receive(i0); receive(i1);
+  store(i0+2*a*i1,row+(ROWS-1)*inc);
+
 
   // Update 1
   a=-0.05298011854;
   for (i=2;i<ROWS;i+=2) {
-    x[i][n]+=a*(x[i-1][n]+x[i+1][n]);
+    gather(row+(i-1)*inc);
+    gather(row+(i+0)*inc);
+    gather(row+(i+1)*inc);
+    receive(i0);receive(i1);receive(i2);
+    store(i1+a*(i0+i2),row+(i+0)*inc);
   }
-  x[0][n]+=2*a*x[1][n];
+  gather(row+(0)*inc);
+  gather(row+(1)*inc);
+  receive(i0);receive(i1);
+  store(i0+2*a*i1,row+(0)*inc);
 
   // Predict 2
   a=0.8829110762;
   for (i=1;i<ROWS-2;i+=2) {
-    x[i][n]+=a*(x[i-1][n]+x[i+1][n]);
+    gather(row+(i-1)*inc);
+    gather(row+(i+0)*inc);
+    gather(row+(i+1)*inc);
+    receive(i0);receive(i1);receive(i2);
+    store(i1+a*(i0+i2),row+(i+0)*inc);
+
   }
-  x[ROWS-1][n]+=2*a*x[ROWS-2][n];
+  gather(row+(ROWS-1)*inc);
+  gather(row+(ROWS-2)*inc);
+  receive(i0); receive(i1);
+  store(i0+2*a*i1,row+(ROWS-1)*inc);
 
   // Update 2
   a=0.4435068522;
   for (i=2;i<ROWS;i+=2) {
-    x[i][n]+=a*(x[i-1][n]+x[i+1][n]);
+    gather(row+(i-1)*inc);
+    gather(row+(i+0)*inc);
+    gather(row+(i+1)*inc);
+    receive(i0);receive(i1);receive(i2);
+    store(i1+a*(i0+i2),row+(i+0)*inc);
   }
-  x[0][n]+=2*a*x[1][n];
+  gather(row+(0)*inc);
+  gather(row+(1)*inc);
+  receive(i0);receive(i1);
+  store(i0+2*a*i1,row+(0)*inc);
 
   // Scale
   a=1/1.149604398;
   for (i=0;i<ROWS;i++) {
-    if (i%2) x[i][n]*=a;
-    else x[i][n]/=a;
+    gather(row+(i)*inc);
+    receive(i0);
+    if (i%2) store(i0*a,row+(i)*inc);
+    else store(i0/a,row+(i)*inc);
   }
 
   // Pack
   //if (tempbank==0) tempbank=(double *)malloc(n*sizeof(double));
   for (i=0;i<ROWS;i++) {
-    if (i%2==0) tempbank[i/2]=x[i][n];
-    else tempbank[ROWS/2+i/2]=x[i][n];
+    gather(row+(i)*inc);
+    receive(i0);
+    if (i%2==0) store(i0,tempRow+(i/2)*inc);
+    else store(i0,tempRow+(ROWS/2+i/2)*inc);
   }
-  for (i=0;i<ROWS;i++) x[i][n]=tempbank[i];
+  for (i=0;i<ROWS;i++){
+    gather(temprow+(i)*inc);
+    receive(i0);
+    store(i0,row+(i)*inc);
+  }
+
 }
 
 
@@ -79,7 +121,7 @@ void coldwt(int n){ //n is the current col number
  *
  *  See also iwt97.
  */
-void rowdwt(int n) { //n is the current row number
+void rowdwt(Float) { //n is the current row number
   double a;
   int i;
 
@@ -229,6 +271,41 @@ void coldiwt(int n){
     }
     x[ROWS-1][n]+=2*a*x[ROWS-2][n];
 }
+
+
+
+
+int main()
+{
+  // Compile the gcd function to a QPU kernel k
+  auto k = compile(coldwt);
+
+  // Allocate and initialise arrays shared between CPU and QPUs
+  SharedArray<Float> im(64*64);
+  SharedArray<Float> tempbank(64*64);
+  // Initialise inputs to random values in range 100..199
+  //srand(0);
+
+  for (int i = 0; i < 16; i++) {
+    a[i] = 100 + rand()%100;
+    b[i] = 100 + rand()%100;
+  }
+
+  // Set the number of QPUs to use
+  k.setNumQPUs(4);
+
+  // Invoke the kernel
+  k(&im,&tempbank);
+
+  // Display the result
+  for (int i = 0; i < 16; i++)
+    printf("gcd(%i, %i) = %i\n", a[i], b[i], r[i]);
+
+  return 0;
+}
+
+
+
 
 
 int main() {
