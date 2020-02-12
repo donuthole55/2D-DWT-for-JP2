@@ -26,13 +26,13 @@ void coldwt(Ptr<Float> im, Ptr<Float> tempbank){ //n is the current col number
   // Predict 1
   a=-1.586134342;
   Float i0, i1, i2;
-  for (i=1;i<ROWS-2;i+=2){
-    gather(row+(i-1)*inc);
-    gather(row+(i+0)*inc);
-    gather(row+(i+1)*inc);
+  For (Int j=1,j<ROWS-2,j=j+2)
+    gather(row+(j-1)*inc);
+    gather(row+(j+0)*inc);
+    gather(row+(j+1)*inc);
     receive(i0);receive(i1);receive(i2);
-    store(i1+a*(i0+i2),row+(i+0)*inc);
-  }
+    store(i1+a*(i0+i2),row+(j+0)*inc);
+  End
   gather(row+(ROWS-1)*inc);
   gather(row+(ROWS-2)*inc);
   receive(i0); receive(i1);
@@ -41,13 +41,13 @@ void coldwt(Ptr<Float> im, Ptr<Float> tempbank){ //n is the current col number
 
   // Update 1
   a=-0.05298011854;
-  for (i=2;i<ROWS;i+=2) {
-    gather(row+(i-1)*inc);
-    gather(row+(i+0)*inc);
-    gather(row+(i+1)*inc);
+  For (Int j=2,j<ROWS,j=j+2) 
+    gather(row+(j-1)*inc);
+    gather(row+(j+0)*inc);
+    gather(row+(j+1)*inc);
     receive(i0);receive(i1);receive(i2);
-    store(i1+a*(i0+i2),row+(i+0)*inc);
-  }
+    store(i1+a*(i0+i2),row+(j+0)*inc);
+  End
   gather(row+(0)*inc);
   gather(row+(1)*inc);
   receive(i0);receive(i1);
@@ -55,14 +55,14 @@ void coldwt(Ptr<Float> im, Ptr<Float> tempbank){ //n is the current col number
 
   // Predict 2
   a=0.8829110762;
-  for (i=1;i<ROWS-2;i+=2) {
-    gather(row+(i-1)*inc);
-    gather(row+(i+0)*inc);
-    gather(row+(i+1)*inc);
+  For (Int j=1,j<ROWS-2,j=j+2)
+    gather(row+(j-1)*inc);
+    gather(row+(j+0)*inc);
+    gather(row+(j+1)*inc);
     receive(i0);receive(i1);receive(i2);
-    store(i1+a*(i0+i2),row+(i+0)*inc);
+    store(i1+a*(i0+i2),row+(j+0)*inc);
 
-  }
+  End
   gather(row+(ROWS-1)*inc);
   gather(row+(ROWS-2)*inc);
   receive(i0); receive(i1);
@@ -83,7 +83,7 @@ void coldwt(Ptr<Float> im, Ptr<Float> tempbank){ //n is the current col number
   store(i0+2*a*i1,row+(0)*inc);
 
   // Scale
-  a=1/1.149604398;'
+  a=1/1.149604398;
   float b = 1/a;
   for (i=0;i<ROWS;i++) {
     gather(row+(i)*inc);
@@ -289,8 +289,8 @@ int main()
   auto k = compile(coldwt);
 
   // Allocate and initialise arrays shared between CPU and QPUs
-  SharedArray<Float> im(64*64);
-  SharedArray<Float> tempbank(64*64);
+  SharedArray<float> im(64*64);
+  SharedArray<float> tempbank(64*64);
 
 
 
@@ -316,7 +316,9 @@ int main()
 
   // Do the forward 9/7 transform
   //rowdwt(0);
-  coldwt(&im,&tempbank);
+  
+
+//coldwt(&im,&tempbank);
 
   // Prints the wavelet coefficients
   printf("Wavelets coefficients:\n");
