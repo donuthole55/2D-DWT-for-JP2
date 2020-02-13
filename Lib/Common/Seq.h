@@ -42,7 +42,7 @@ template <class T> class Seq
       T* newElems = new T[maxElems];
       for (int i = 0; i < numElems-1; i++)
         newElems[i] = elems[i];
-      delete [] elems;
+      //free(elems);
       elems = newElems;
     }
 
