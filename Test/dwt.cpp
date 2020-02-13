@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "QPULib.h"
+#include <math.h>
 //double *tempbank=0;
 
 #define ROWS 64
@@ -41,7 +42,7 @@ void coldwt(Ptr<Float> im, Ptr<Float> tempbank){ //n is the current col number
 
   // Update 1
   a=-0.05298011854;
-  For (Int j=2,j<ROWS,j=j+2) 
+  For (Int j=2,j<ROWS,j=j+2)
     gather(row+(j-1)*inc);
     gather(row+(j+0)*inc);
     gather(row+(j+1)*inc);
@@ -84,7 +85,7 @@ void coldwt(Ptr<Float> im, Ptr<Float> tempbank){ //n is the current col number
 
   // Scale
   a=1/1.149604398;
-  float b = 1/a;
+  float b=1.149604398;
   for (i=0;i<ROWS;i++) {
     gather(row+(i)*inc);
     receive(i0);
@@ -94,11 +95,15 @@ void coldwt(Ptr<Float> im, Ptr<Float> tempbank){ //n is the current col number
 
   // Pack
   //if (tempbank==0) tempbank=(double *)malloc(n*sizeof(double));
+  int count = 0;
   for (i=0;i<ROWS;i++) {
     gather(row+(i)*inc);
     receive(i0);
     if (i%2==0) store(i0,tempRow+(i/2)*inc);
-    else store(i0,tempRow+(ROWS/2+i/2)*inc);
+    else {
+      store(i0,tempRow+(32+count)*inc);
+      count++;
+    }
   }
   for (i=0;i<ROWS;i++){
     gather(tempRow+(i)*inc);
@@ -298,8 +303,6 @@ int main()
   k.setNumQPUs(4);
 
   // Invoke the kernel
-  k(&im,&tempbank);
-
 
   int i;
 
@@ -316,7 +319,7 @@ int main()
 
   // Do the forward 9/7 transform
   //rowdwt(0);
-  
+  k(&im,&tempbank);
 
 //coldwt(&im,&tempbank);
 
@@ -341,7 +344,7 @@ int main()
 
 
   // Display the result
-  
+
   return 0;
 }
 
